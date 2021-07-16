@@ -1,0 +1,19 @@
+{
+    "manifest_version": 2,
+    "name": "WebdriverIO Exporter for Katalon Recorder",
+    "description": "Generate syntax for WebdriverIO tests in the Katalon Recorder, similar to Selenium IDE",
+    "version": "1.0",
+    "icons": { 
+        "16": "logo_wio_16.png",
+        "32": "logo_wio_32.png",
+        "48": "logo_wio_48.png",
+        "128": "logo_wio_128.png" },
+    "background": {
+        "scripts": [
+            "KatalonConversion.js", "background.js"
+        ]
+    },
+    "permissions": [
+        "alarms"
+    ]
+}
