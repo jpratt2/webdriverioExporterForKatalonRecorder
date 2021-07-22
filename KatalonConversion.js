@@ -1,6 +1,3 @@
-var isAlertPresentFunctionNeededGlb = false;
-var isCookiePresentFunctionNeededGlb = false;
-
 function convertKatalonSyntax(command, target, value){
     //2 types of tests need special handing:
     if(/Attribute/.test(command)){
@@ -487,9 +484,11 @@ function convertKatalonSyntax(command, target, value){
             
         case "select":
             //select an option by text in a select tool
-            return target + '.selectOption("'+value+'");';
+            return "await (" + target + ").selectByVisibleText("'+value+'");';
 
         case "selectFrame":  
+            return "//selectFrame is not supported in this export plugin"
+            /* //selenide code follows:
             if(/index=/.test(target)){
                 var index = target.replace("index=","");//the target will be in the format index=1 (for the 2nd frame)
                 return 'switchTo().frame('+index+');';
@@ -500,23 +499,31 @@ function convertKatalonSyntax(command, target, value){
             }else{
                 return '//selectFrame is only partially supported in Selenide. Use "switchTo()." for available options'
             }
+            */
             
         case "selectPopUp":
         case "selectWindow":
-            return 'switchTo().window("'+value+'");';    
+            return "await browser.switchWindow('" + value + "');";    
             
         case "sendKeys":
         case "type":
         case "typeKeys":
-            return target + '.sendKeys("'+value+'");';
- 
+            return "//focus on element \n" + //how to focus reference: https://blog.kevinlamping.com/set-keyboard-focus-on-an-element-via-webdriverio/
+            "browser.execute(function (element) { \n" +
+            "    element.focus(); \n" +
+            "}," + target + ");\n" + 
+            `await browser.keys('["` + value + `"]');`;
+                     
         case "store":
             //store a value in a variable
-            return 'String '+target+' = "'+value+'";';
+            return "var " + target + " = " + value + ";";
             
         case "submit":
             //click the submit button of a form element
-            return target + '.$("* [type=\'submit\']").click();//submit';
+            let response = "await formElm = " + target + ";" + "\n" +
+            `let submitBtn = await formElm.$('[type="submit"]');` + "\n" +
+            "await submitBtn.click();";
+            return response;
             
         default:
             return "//Unsupported command: " + command + " | target: " + target + " | value: " + value;
@@ -530,19 +537,19 @@ function formatTarget(target){
     }
     if(/^id=/.test(target)){
         target = target.replace("id=","");
-        target = '$("#' + target + '")';
+        target = "await $('#" + target + "')";
     }else if(/^name=/.test(target)){
         target = target.replace("name=","");
-        target = '$(By.name("' + target + '"))';
+        target = `await $('[name="` + target + `"]')`;
     }else if(/^xpath=/.test(target) || /^[/]/.test(target)){
         target = target.replace("xpath=","");
-        target = '$x("' + target + '")';
+        target = "await $('" + target + "')";
     }else if(/^link=/.test(target)){
         target = target.replace("link=","");
-        target = '$(By.linkText("' + target + '"))';
+        target = "await $('=" + target + "')";
     }else if(/^css=/.test(target)){
         target = target.replace("css=","");
-        target = '$("' + target + '")';
+        target = "await $('" + target + "')";
     }
     return target;
 }
