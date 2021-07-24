@@ -18,10 +18,13 @@ function convertKatalonSyntax(command, target, value){
     
     target = formatTarget(target);
     value = formatValue(value);
-    command = command.replace("AndWait","");//there should never be a need to request a wait when using Selenide.
+    command = command.replace("AndWait","");//there should never be a need to request a wait
     if(/waitFor/.test(command)){
-        return '//there should be no need for a "waitFor" command. Selenide provides automatic waits.'
-        }
+        return '//there should be no need for a "waitFor" command. It should automatically be provided'
+    }
+    //learn more about the "Selenese" commands used in the Katalon Recorder here:
+    //https://docs.katalon.com/katalon-recorder/docs/selenese-selenium-ide-commands-reference.html
+    
     switch(command){
         case "addScript":
             //adds some javascript into a script tag with a specific tag id. Format: addScript(scriptContent, scriptTagId).
@@ -339,167 +342,127 @@ function convertKatalonSyntax(command, target, value){
             return 'assertNotEquals(' + value + ', $' + target + '.size());';
             
         case "captureEntirePageScreenshot":
-            //takes an image of the viewport and saves it to build/reports/tests/ by default
-            return 'screenshot("' + target + '");';
-            
+            //different browsers may respond differently. Firefox may take a screenshot of the entire page while Chrome only takes a screenshot of the viewport
+            return "await browser.saveScreenshot('" + target + "');";
+
         case "check":
             //check a checkbox
-            return 'executeJavaScript("arguments[0].checked = true;", '+target+');';
+            return 'await browser.execute("arguments[0].checked = true;", '+target+');';
         case "uncheck":
             //uncheck a checkbox
-            return 'executeJavaScript("arguments[0].checked = false;", '+target+');';
+            return 'await browser.execute("arguments[0].checked = false;", '+target+');';
         
         case "chooseCancelOnNextPrompt" :
         case "chooseCancelOnNextConfirmation" :
-             return 'dismiss();//Manually move this command to be after the command that opens the prompt/confirmation to choose "cancel".';
+             return 'await browser.dismissAlert();//Manually move this command to be after the command that opens the prompt/confirmation to choose "cancel".';
  
         case "chooseOkOnNextConfirmation" :
-            return 'confirm();//Manually move this command to be after the command that opens the confirmation to choose "OK".';
+            return 'await browser.acceptAlert();//Manually move this command to be after the command that opens the confirmation to choose "OK".';
             
         case "click":
-            return target + ".click();";
+            return "await (" + target + ").click();";
             
         case "clickAt":
             //click an element at specific X and Y coordinates, such as at "10,20"
             var xYArray = value.split(",");
             var xOffset = xYArray[0];
             var yOffset = xYArray[1];
-            return target + '.click(' + xOffset + ', ' + yOffset + ');';
-            
+            return "await (" + target + ").click({ x: '" + xOffset + "', y: '" + yOffset + "'});";
+            //source: https://webdriver.io/docs/api/element/click
+
         case "close":
-            //close the browser
-            return "close();";
-            
+            return "await browser.closeWindow()";
+
         case "contextMenu":
             //right-click
-            return target + '.contextClick();';
+            return "await (" + target + ").click({ button: 'right' });";
         
         case "controlKeyDown":
+            return "//for the control key: await browser.keys(['Control', 'text']);";
+
         case "shiftKeyDown":
-            return '//To use the control/shift key in webdriver, use Keys.chord. For example: String selectAll = Keys.chord(Keys.CONTROL, "a"); getWebDriver().findElement(By.tagName("body")).sendKeys(selectAll); //https://stackoverflow.com/a/11509778';
+            return "//for the shift key: await browser.keys(['Shift', 'text']);";
             
         case "createCookie":
-            //this is regular Selenium syntax
             var nameValueArray = target.split("=");
             var cookieName = nameValueArray[0];
             var cookieValue = nameValueArray[1];
-            return 'Cookie ck = new Cookie("' + cookieName + '","' + cookieValue + '");getWebDriver().manage().addCookie(ck);';
-            
-        case "deleteAllVisibleCookies":
-            return 'clearBrowserCookies();';
+            return "await browser.setCookies([{name: '" + cookieName + "', value: '" + cookieValue + "'}]);";
+
+            case "deleteAllVisibleCookies":
+            return "await browser.deleteCookies();"
+            //alternate: browser.deleteAllCookies();
             
         case "deleteCookie":
-            return 'getWebDriver().manage().deleteCookieNamed("' + target + '");';
-            
-        case "deselectPopUp":
-            return 'switchTo().window(0);//deselectPopUp';
-            
+            return "await browser.deleteCookies(['" + target + "']);";
+            //alternate: browser.deleteNamedCookie('name');
+                  
         case "doubleClick":
-            //double-click
-            return target + '.doubleClick();';
-            
-        case "dragAndDrop":
-            //drag and drop with the value set to a string representing x and y values such as "-10,20"
-            var xYArray = value.split(",");
-            var xOffset = xYArray[0];
-            var yOffset = xYArray[1];
-            return 'actions().dragAndDropBy(' + target + ',' + xOffset + ',' + yOffset + ').perform();';
-            //\\
-            
+            return "await (" + target + ").doubleClick();";
+                    
         case "dragAndDropToObject":  
-            return target + '.dragAndDropTo(' + value + ');';
-            //\\
-            
-        //case "editContent":
-            //Is there a need for testing the editing of content in a rich text editor like TinyMCE?
-            //see https://ui.vision/rpa/docs/selenium-ide/editcontent
-            //\\
-            
+            return "await (" + target + ").dragAndDrop(" + value + ");";
+                                   
         case "echo":
-            return 'System.out.println("***************************** echo command value: '+target+'");';
+            return `await browser.execute('console.log("*****************echo value:"); console.log("` + target + `")');`;
             
         case "focus":
-            //focus an element
-            return target + '.sendKeys(Keys.SHIFT);  //focus equivalent';
-            //\\
+            return "await browser.execute('arguments[0].focus()'," + target + ");";
             
         case "goBack":
-            //return to the previous page in the Browser's URL history
-            return 'back();//goBack';
-
-        case "getElementIndex":
-            //deprecated in the java version of Selenium
-            return '//for getElementIndex in java webdriver, consider https://stackoverflow.com/a/31289125';
+            return "await browser.back()');";
 
         case "highlight":
-            return 'executeJavaScript("arguments[0].setAttribute(\'style\',\'border: solid red; background: yellow\')",' + target + ');//highlight';
-            
-        //is there a real need for the "mouseDown" and other mouse movement directions?
+            return `await browser.execute("arguments[0].setAttribute('style','border: solid red; background: yellow')",` + target + `);//highlight`;
        
         case "mouseMoveAt":
             //moves the mouse at an x,y position relative to the element's location
             var xYArray = value.split(",");
             var xOffset = xYArray[0];
             var yOffset = xYArray[1];
-            return 'actions().moveToElement(' + target + ',' + xOffset + ',' + yOffset + ').perform();//moveMouseAt';
+            return 'await (' + target + ').moveTo({'+xOffset+','+yOffset+'});';
 
         case "mouseOver":
-            //moves the mouse to the center of an element
-            return 'actions().moveToElement(' + target + ').perform();';
+            return 'await (' + target + ').moveTo();';
             
         case "mouseOut":
-            //move mouse away from an element
-            return 'actions().moveToElement($(By.tagName("body"))).perform();//mouseOut';
+            return '//mouseOut is not supported';
             
         case "open":
-            //open a url
-            return 'open("' + target + '");';
+            return "await browser.url('" + target + "');";
             
         case "openWindow":
-            //openWindow(url, windowID) where windowID is the Javascript-assigned window ID
-            return 'executeJavaScript("window.open(\'' + target + '\',\'' + value + '\');");//open a pop-up and give it a JS name';
-            
+            return "browser.newWindow(" + target + ", {" + value + "});";//target is the URL, value is the name
+
         case "pause":
-            return (target)? 'sleep('+target+');' : 'sleep('+value+');'//the pause command can use either a target or a value  
-        
+            return (target)? 'await browser.pause('+target+');' : 'await browser.pause('+value+');'//the pause command can use either a target or a value  
+
         case "refresh":
             //refresh the current page
-            return 'refresh();';
+            return "await browser.refresh();";
             
         case "removeAllSelections":
             //remove all selections from a multi-select box
-            return 'executeJavaScript("arguments[0].selectedIndex = -1;",' + target + ');//removeAllSelections';
+            return 'await browser.execute("arguments[0].selectedIndex = -1;",' + target + ');//removeAllSelections';
             //source: https://stackoverflow.com/a/42170881';
             
         case "removeScript":
             //remove a javascript tag and its content
-            return 'executeJavaScript("arguments[0].remove()",' + target + ');//removeScript';
+            return 'await browser.execute("arguments[0].remove()",' + target + ');';
         
         case "removeSelection":    
             //unselect an option in a multi-select box. The target should be the multi-select box and the value should be the option text.
-            return 'Array.from('+target+').filter( option => option.text=="'+value+'")[0].selected=false;//removeSelection';
+            return "removeSelection is not supported in this plugin";
             
         case "runScript":
-            return 'executeJavaScript("'+value+'");//runscript';
+            return "await browser.execute('" + value + "');";
             
         case "select":
             //select an option by text in a select tool
-            return "await (" + target + ").selectByVisibleText("'+value+'");';
+            return "await (" + target + ").selectByVisibleText('" + value + "');";
 
         case "selectFrame":  
-            return "//selectFrame is not supported in this export plugin"
-            /* //selenide code follows:
-            if(/index=/.test(target)){
-                var index = target.replace("index=","");//the target will be in the format index=1 (for the 2nd frame)
-                return 'switchTo().frame('+index+');';
-            }else if(target === "relative=parent"){
-                return 'switchTo().parentFrame();';
-            }else if(target === "relative=top"){
-                return 'refresh();//consider "refresh" or switchto().parentFrame() instead of "select top frame"';
-            }else{
-                return '//selectFrame is only partially supported in Selenide. Use "switchTo()." for available options'
-            }
-            */
+            return "await browser.selectFrame("+target+");";//expecting an index number 
             
         case "selectPopUp":
         case "selectWindow":
@@ -508,12 +471,13 @@ function convertKatalonSyntax(command, target, value){
         case "sendKeys":
         case "type":
         case "typeKeys":
-            return "//focus on element \n" + //how to focus reference: https://blog.kevinlamping.com/set-keyboard-focus-on-an-element-via-webdriverio/
-            "browser.execute(function (element) { \n" +
-            "    element.focus(); \n" +
-            "}," + target + ");\n" + 
+            return `await browser.execute('arguments[0].focus()', ` + target +  `);\n` +
             `await browser.keys('["` + value + `"]');`;
                      
+        case "setText":
+            //for input fields
+            return "await (" + target + ").setValue('" + value + "');";
+
         case "store":
             //store a value in a variable
             return "var " + target + " = " + value + ";";
@@ -521,7 +485,7 @@ function convertKatalonSyntax(command, target, value){
         case "submit":
             //click the submit button of a form element
             let response = "await formElm = " + target + ";" + "\n" +
-            `let submitBtn = await formElm.$('[type="submit"]');` + "\n" +
+            `var submitBtn = await formElm.$('[type="submit"]');` + "\n" +
             "await submitBtn.click();";
             return response;
             
