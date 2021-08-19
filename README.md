@@ -1,5 +1,5 @@
 # WebdriverIO Exporter for Katalon Recorder
 
-Automatically generate code for WebdriverIO tests by using browser actions in the Katalon Recorder, similar to Selenium IDE:
+Please visit https://bitbucket.org/johncpratt1/webdriverioexporterforkatalonrecorder/src/master/ for the latest version.
 
-https://chrome.google.com/webstore/detail/katalon-recorder-selenium/ljdobmomdgdljniojadhoplhkpialdid  
+
